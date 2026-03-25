@@ -5698,7 +5698,7 @@ const LS_FICHAS="korflex_fichas";
 const LS_OPTS="korflex_opts";
 const LS_VER="korflex_version";
 const LS_DELETED="korflex_deleted_opts";
-const DATA_VERSION=69; // ← Incrementar cada vez que se añadan/modifiquen fichas base o catálogo
+const DATA_VERSION=70; // ← Incrementar cada vez que se añadan/modifiquen fichas base o catálogo
 const GRAFENO30NEW_F={id:"30grafeno_001",modelo:"30 GRAFENO | | CuIENTE: © AHMED",cliente:"KORFLEX",fecha:"MAR 26",alturaTotal:"26",nu_desc:"26 cm._D-21",nu_alt:"",nu_comp:["Tejido: GRAFENO","Acolchado Continuo / Tapa-tapaa MASTER","Tejido: 2D NEGRO","Acolchado Continuo / Tapa-tapa) CONTINUO","Tejido: MICROFIBRA NIEBLA"],tA_tej:"MASTER",tA_dib:"",tA_mats:[],tA_tt:false,tA_co:false,tA_mu:false,tA_ma:false,tB_tej:"",tB_dib:"",tB_mats:[],tB_tt:false,tB_co:false,tB_mu:false,tB_ma:false,tB_igual:false,pl_tej:"",pl_dib:"",pl_mats:[],pl_comp:"",pl_hilo:"",pl_ultra:false,pl_multi:false,as_bord:"",as_bordP:"",as_seri:"",as_n:"",as_horiz:false,as_vert:false,as_etiq:"",as_det:"",nu_sop:"",nu_peri:"",nu_esp:false,nu_mue:false,rib:"",rib_col:"",crem:false,crem_col:"",frib:false,frib_col:"",fcrem:false,fcrem_col:"",caja:false,gar:false,peg:false,emb:false,enc:false,enr:false,abierto:false,obs:"",activo:true,_rev:["codigo","nu_desc","nu_alt","cliente"],_src:{pdf:"30 GRAFENO.pdf"}};
 const AGAPE_F={id:"agape_001",modelo:"AGAPE",cliente:"CARREFOUR",fecha:"NÚCLEO",alturaTotal:"21",nu_desc:"ETIQUETADO",nu_alt:"",nu_comp:["Acolchado Contínuo / Tapa-tapa:","Tejido:","Acolchado Contínuo / Tapa-tapa:","Tejido:","Tejido:"],tA_tej:"Acolchado Contínuo / Tapa-tapa:",tA_dib:"",tA_mats:[],tA_tt:false,tA_co:false,tA_mu:false,tA_ma:false,tB_tej:"Tejido:",tB_dib:"",tB_mats:[],tB_tt:false,tB_co:false,tB_mu:false,tB_ma:false,tB_igual:false,pl_tej:"",pl_dib:"",pl_mats:[],pl_comp:"",pl_hilo:"",pl_ultra:false,pl_multi:false,as_bord:"",as_bordP:"",as_seri:"",as_n:"",as_horiz:false,as_vert:false,as_etiq:"",as_det:"",nu_sop:"",nu_peri:"",nu_esp:false,nu_mue:false,rib:"",rib_col:"",crem:false,crem_col:"",frib:false,frib_col:"",fcrem:false,fcrem_col:"",caja:false,gar:false,peg:false,emb:false,enc:false,enr:false,abierto:false,obs:"",activo:true,_rev:["codigo","nu_desc","nu_alt","cliente"],_src:{pdf:"AGAPE CARREFOUR FICHA TECNICA PRODUCTO.pdf"}};
 const AMBAR30_F={id:"ambar30_001",modelo:"AMBAR 30",cliente:"CARREFOUR",fecha:"NÚCLEO",alturaTotal:"27",nu_desc:"ETIQUETADO",nu_alt:"",nu_comp:["Acolchado Contínuo / Tapa-tapa:","Tejido:","Acolchado Contínuo / Tapa-tapa:","Tejido:","Tejido:"],tA_tej:"Acolchado Contínuo / Tapa-tapa:",tA_dib:"",tA_mats:[],tA_tt:false,tA_co:false,tA_mu:false,tA_ma:false,tB_tej:"Tejido:",tB_dib:"",tB_mats:[],tB_tt:false,tB_co:false,tB_mu:false,tB_ma:false,tB_igual:false,pl_tej:"",pl_dib:"",pl_mats:[],pl_comp:"",pl_hilo:"",pl_ultra:false,pl_multi:false,as_bord:"",as_bordP:"",as_seri:"",as_n:"",as_horiz:false,as_vert:false,as_etiq:"",as_det:"",nu_sop:"",nu_peri:"",nu_esp:false,nu_mue:false,rib:"",rib_col:"",crem:false,crem_col:"",frib:false,frib_col:"",fcrem:false,fcrem_col:"",caja:false,gar:false,peg:false,emb:false,enc:false,enr:false,abierto:false,obs:"",activo:true,_rev:["codigo","nu_desc","nu_alt","cliente"],_src:{pdf:"AMBAR 30 CARREFOUR FICHA TECNICA PRODUCTO.pdf"}};
@@ -6112,6 +6112,22 @@ function initData(){
       // V69: APOLO — nu_comp["BOREAL 15+5+5"] es descripción, no capa adicional. nu_alt=25 ya cubre el total.
       if(f.id==="apolo_001"&&Array.isArray(f.nu_comp)&&f.nu_comp.length===1&&typeof f.nu_comp[0]==="string"&&/BOREAL/i.test(f.nu_comp[0])){
         f={...f,nu_comp:[]};
+      }
+      // V70: RESET FORZADO de fichas cuyas tapas quedaron vacías en localStorage (p.ej. ATENEA editada antes de tener datos).
+      // Si tA_dib Y tA_mats están vacíos pero el base tiene datos, restaurar campos de tapa desde el base.
+      {
+        const baseMap70={};BASE_FICHAS.forEach(b=>baseMap70[b.id]=b);
+        const base70=baseMap70[f.id];
+        if(base70){
+          const tAEmpty=(!f.tA_dib||f.tA_dib==="")&&(!f.tA_mats||f.tA_mats.length===0);
+          const tBEmpty=(!f.tB_dib||f.tB_dib==="")&&(!f.tB_mats||f.tB_mats.length===0);
+          if(tAEmpty&&(base70.tA_dib||base70.tA_tej||(base70.tA_mats&&base70.tA_mats.length>0))){
+            f={...f,tA_tej:base70.tA_tej,tA_dib:base70.tA_dib,tA_mats:base70.tA_mats||[],tA_alts:base70.tA_alts||[],tA_tt:base70.tA_tt,tA_co:base70.tA_co,tA_mu:base70.tA_mu,tA_ma:base70.tA_ma};
+          }
+          if(tBEmpty&&(base70.tB_dib||base70.tB_tej||(base70.tB_mats&&base70.tB_mats.length>0))){
+            f={...f,tB_tej:base70.tB_tej,tB_dib:base70.tB_dib,tB_mats:base70.tB_mats||[],tB_alts:base70.tB_alts||[],tB_tt:base70.tB_tt,tB_co:base70.tB_co,tB_mu:base70.tB_mu,tB_ma:base70.tB_ma,tB_igual:base70.tB_igual||false};
+          }
+        }
       }
       // V46: REGLA PLATABANDA — CONTINUO siempre gana (MULTIAGUJAS). Si no CONTINUO: FIBRA→ULTRA, sin FIBRA→MULTI. Solo 1 opción.
       {const hasCo=f.tA_co===true||f.tB_co===true;
