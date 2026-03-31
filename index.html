@@ -371,17 +371,26 @@ function initData(){
   const isNew=storedVer<DATA_VERSION;
   // --- FICHAS ---
   let fichas=lsLoad(LS_FICHAS,null);
+  let skipMigrations=false;
   if(!fichas){
     // Primera carga: usar snapshot del usuario TAL CUAL (datos ya revisados y limpios)
     if(typeof USER_SNAPSHOT!=="undefined"&&USER_SNAPSHOT.length>0){
       fichas=USER_SNAPSHOT.map(s=>({...s}));
+      skipMigrations=true; // Datos del snapshot ya están limpios, no migrar
     } else {
       fichas=BASE_FICHAS.map(b=>({...b}));
     }
-    // Guardar inmediatamente para que próximas cargas usen localStorage
-    lsSave(LS_FICHAS,fichas);
-    lsSave(LS_VER,DATA_VERSION);
   } else if(isNew){
+    // V78: Si USER_SNAPSHOT tiene datos completos, forzar recarga desde snapshot
+    // Esto asegura que GitHub siempre muestre los datos correctos
+    if(typeof USER_SNAPSHOT!=="undefined"&&USER_SNAPSHOT.length>=fichas.length){
+      // Preservar fichas creadas por el usuario (no están en snapshot)
+      const snapIds=new Set(USER_SNAPSHOT.map(s=>s.id));
+      const userCreated=fichas.filter(f=>!snapIds.has(f.id));
+      fichas=USER_SNAPSHOT.map(s=>({...s}));
+      userCreated.forEach(f=>fichas.push(f));
+      skipMigrations=true;
+    } else {
     // Versión nueva → merge inteligente campo por campo
     const baseMap={};BASE_FICHAS.forEach(b=>baseMap[b.id]=b);
     // Aplicar snapshot del usuario como datos base (correcciones integradas)
@@ -663,6 +672,7 @@ function initData(){
       }
       return f;
     });
+    } // cierre del else (merge antiguo)
   }
   // --- OPCIONES ---
   let opts;
@@ -726,22 +736,25 @@ function initData(){
   if(opts.mt) opts.mt=opts.mt.filter(v=>!(/^TNT/i.test(v)&&v!=="TNT 15"&&v!=="TNT 30"));
   // V51: Eliminar "ESPUMA CONVENCIONAL" sola del catálogo (solo permitir con número)
   if(opts.mt) opts.mt=opts.mt.filter(v=>v!=="ESPUMA CONVENCIONAL");
-  const _replX1=arr=>arr?arr.map(v=>v==="ESPUMA CONVENCIONAL x1"?"ESPUMA CONVENCIONAL 1 cm":v):arr;
-  fichas=fichas.map(f=>{
-    let changed=false;
-    const tA=_replX1(f.tA_mats);if(tA!==f.tA_mats){f={...f,tA_mats:tA};changed=true;}
-    const tB=_replX1(f.tB_mats);if(tB!==f.tB_mats){f={...f,tB_mats:tB};changed=true;}
-    const pl=_replX1(f.pl_mats);if(pl!==f.pl_mats){f={...f,pl_mats:pl};changed=true;}
-    // V78: Limpiar FIBRA sin gramaje y normalizar variantes en fichas
-    const tA2=_normFibra(f.tA_mats);const tB2=_normFibra(f.tB_mats);const pl2=_normFibra(f.pl_mats);const nc2=_normFibra(f.nu_comp);
-    if(JSON.stringify(tA2)!==JSON.stringify(f.tA_mats))f={...f,tA_mats:tA2};
-    if(JSON.stringify(tB2)!==JSON.stringify(f.tB_mats))f={...f,tB_mats:tB2};
-    if(JSON.stringify(pl2)!==JSON.stringify(f.pl_mats))f={...f,pl_mats:pl2};
-    if(JSON.stringify(nc2)!==JSON.stringify(f.nu_comp))f={...f,nu_comp:nc2};
-    return f;
-  });
+  if(!skipMigrations){
+    const _replX1=arr=>arr?arr.map(v=>v==="ESPUMA CONVENCIONAL x1"?"ESPUMA CONVENCIONAL 1 cm":v):arr;
+    fichas=fichas.map(f=>{
+      let changed=false;
+      const tA=_replX1(f.tA_mats);if(tA!==f.tA_mats){f={...f,tA_mats:tA};changed=true;}
+      const tB=_replX1(f.tB_mats);if(tB!==f.tB_mats){f={...f,tB_mats:tB};changed=true;}
+      const pl=_replX1(f.pl_mats);if(pl!==f.pl_mats){f={...f,pl_mats:pl};changed=true;}
+      // V78: Limpiar FIBRA sin gramaje y normalizar variantes en fichas
+      const tA2=_normFibra(f.tA_mats);const tB2=_normFibra(f.tB_mats);const pl2=_normFibra(f.pl_mats);const nc2=_normFibra(f.nu_comp);
+      if(JSON.stringify(tA2)!==JSON.stringify(f.tA_mats))f={...f,tA_mats:tA2};
+      if(JSON.stringify(tB2)!==JSON.stringify(f.tB_mats))f={...f,tB_mats:tB2};
+      if(JSON.stringify(pl2)!==JSON.stringify(f.pl_mats))f={...f,pl_mats:pl2};
+      if(JSON.stringify(nc2)!==JSON.stringify(f.nu_comp))f={...f,nu_comp:nc2};
+      return f;
+    });
+  }
   // Guardar versión actual
-  if(isNew) lsSave(LS_VER,DATA_VERSION);
+  lsSave(LS_VER,DATA_VERSION);
+  lsSave(LS_FICHAS,fichas);
   return{fichas,opts};
 }
 const _init=initData();
