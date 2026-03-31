@@ -372,13 +372,15 @@ function initData(){
   // --- FICHAS ---
   let fichas=lsLoad(LS_FICHAS,null);
   if(!fichas){
-    // Primera carga: usar snapshot del usuario si existe (datos revisados)
-    const snap=(typeof USER_SNAPSHOT!=="undefined"&&USER_SNAPSHOT.length>0)?USER_SNAPSHOT:[];
-    const snapMap={};snap.forEach(s=>snapMap[s.id]=s);
-    fichas=BASE_FICHAS.map(b=>snapMap[b.id]?{...snapMap[b.id]}:b);
-    // Añadir fichas del snapshot que no estén en BASE_FICHAS
-    const baseIds=new Set(BASE_FICHAS.map(b=>b.id));
-    snap.filter(s=>!baseIds.has(s.id)).forEach(s=>fichas.push(s));
+    // Primera carga: usar snapshot del usuario TAL CUAL (datos ya revisados y limpios)
+    if(typeof USER_SNAPSHOT!=="undefined"&&USER_SNAPSHOT.length>0){
+      fichas=USER_SNAPSHOT.map(s=>({...s}));
+    } else {
+      fichas=BASE_FICHAS.map(b=>({...b}));
+    }
+    // Guardar inmediatamente para que próximas cargas usen localStorage
+    lsSave(LS_FICHAS,fichas);
+    lsSave(LS_VER,DATA_VERSION);
   } else if(isNew){
     // Versión nueva → merge inteligente campo por campo
     const baseMap={};BASE_FICHAS.forEach(b=>baseMap[b.id]=b);
